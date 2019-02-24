@@ -48,9 +48,6 @@ class Bot:
         answers = [
             'Да, даа...',
             'Чего??',
-            'Чего??',
-            'Не поняяятно :)',
-            'Не поняяятно :)',
             'Не поняяятно :)',
             'Я такого не проходила...',
         ]
@@ -60,27 +57,32 @@ class Bot:
     def greet(cls):
         answers = [
             'Всем чмоки в этом чатике! <3',
+            'Гутентаг! :)',
             'Всем чмоки в этом чатике! <3',
             'Привет, привет!',
             'Бонжур! :)',
-            'Гутентаг! :)',
+            'Акунаматата!',
         ]
         return choice(answers)
 
     @classmethod
     def get_closest_game(cls):
-        return Model.get_closest_game()
+        unknown_answer = [
+            'Пока не известно.',
+            'Не знаю...',
+        ]
+        answer = Model.get_closest_game()
+        if not answer:
+            answer = choice(unknown_answer)
+        return answer
 
     @classmethod
     def who_is_capitan(cls):
         captain = Model.get_random_team_member()['name']
         answers = [
-            'Сегодня идёт {}. Без вопросов.',
+            'Идёт {}. Без вопросов.',
             '{}. И никаких там "нихачу, нибуду"!',
-            '{}. И никаких там "нихачу, нибуду"!',
-            '{}. И никаких там "нихачу, нибуду"!',
-            'Ммм... {}!'
-            'Ммм... {}!'
+            'Ммм... {}!',
         ]
         return choice(answers).format(captain)
 
