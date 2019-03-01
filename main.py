@@ -1,8 +1,20 @@
-from random import randint, choice
 import json
+from random import randint, choice
+from re import sub
 
 from vk_api import VkApi, AuthError
 from vk_api.longpoll import VkLongPoll, VkEventType
+
+
+class Helper:
+    @staticmethod
+    def normalize_phrase(request):
+        request = sub(r'[-—,.:?]', '', request)  # Удалить знаки припенания
+        request = sub(r'\s+', ' ', request)  # Заменить повторяющиеся пробелы на один
+        request = request.replace('ё', 'е')  # Заменить букву `ё`
+        request = request.strip()  # Удалить пробельные символы в начале и в конце фразы
+        request = request.lower()  # Привести фразу к нижнему регистру
+        return request
 
 
 class Model:
@@ -28,6 +40,33 @@ class Model:
         team_info = cls.load_team_info()
         return choice(team_info['team_members'])
 
+    @classmethod
+    def get_proverbs(cls):
+        return {
+            "Два сапога — пара,": "да оба на левую ногу надеты",
+            "Собаку съел,": "да хвостом подавился",
+            "Голод не тётка,": "пирожка не даст",
+            "Губа не дура,": "язык не лопатка: знает, что горько, что сладко",
+            "Дуракам закон не писан,": "если писан — то не читан, если читан — то не понят, если понят — то не так",
+            "Забот полон рот,": "а перекусить нечего",
+            "Заварил кашу —": "не жалей масла",
+            "Кто старое помянет, тому глаз вон;": "а кто забудет — тому два",
+            "Москва слезам не верит,": "ей дело подавай",
+            "Не всё коту масленица,": "будет и Великий пост",
+            "Ни рыба, ни мясо — ": "ни кафтан, ни ряса",
+            "Новая метла чисто метёт,": "а обломается — под лавкой валяется",
+            "Первый парень на деревне,": "а деревня в два двора",
+            "Попытка — не пытка,": "а спрос — не беда",
+            "Простота хуже воровства,": "если она не от ума. а от заумия",
+            "Пьяному море по колено,": "а лужа по уши",
+            "Рука руку моет,": "а две руки — лицо",
+            "Утро вечера мудренее —": "жена мужа удалее",
+            "Чем чёрт не шутит,": "когда Бог спит",
+            "Чудеса в решете:": "дыр много, а вылезть негде",
+            "Язык мой — враг мой:": "прежде ума рыщет, беды ищет",
+            "Куда идём мы с Пяточком?": "Большой-большой секрет!",
+        }
+
 
 class Bot:
     LOGIN, PASSWORD = 'yaprostosmotryu@ya.ru', 'uniCORNS'
@@ -41,10 +80,11 @@ class Bot:
             'капитанит': cls.who_is_capitan,
             'умеешь': cls.what_can_you_do,
             'понятно': cls.what_can_you_do,
+            'пословица': cls.proverb,
         }
 
     @classmethod
-    def cant_understand(cls):
+    def cant_understand(cls, request):
         answers = [
             'Да, даа...',
             'Чего??',
@@ -54,7 +94,7 @@ class Bot:
         return choice(answers)
 
     @classmethod
-    def greet(cls):
+    def greet(cls, request):
         answers = [
             'Всем чмоки в этом чатике! <3',
             'Гутентаг! :)',
@@ -66,7 +106,7 @@ class Bot:
         return choice(answers)
 
     @classmethod
-    def get_closest_game(cls):
+    def get_closest_game(cls, request):
         unknown_answer = [
             'Пока не известно.',
             'Не знаю...',
@@ -77,7 +117,7 @@ class Bot:
         return answer
 
     @classmethod
-    def who_is_capitan(cls):
+    def who_is_capitan(cls, request):
         captain = Model.get_random_team_member()['name']
         answers = [
             'Идёт {}. Без вопросов.',
@@ -87,13 +127,25 @@ class Bot:
         return choice(answers).format(captain)
 
     @classmethod
-    def what_can_you_do(cls):
+    def proverb(cls, request):
+        request = request.lower().split('пословица')[1]
+        request = Helper.normalize_phrase(request)
+        proverbs = Model.get_proverbs()
+        for proverb in proverbs:
+            if Helper.normalize_phrase(proverb) == request:
+                return f'{proverb} {proverbs[proverb]}'
+        return f'Что за пословица такая?... Не знаю.'
+
+    @classmethod
+    def what_can_you_do(cls, request):
         answer = [
             'Я умею:',
             '',
             '* Здороваться — Напишите "Привет"',
             '* Подсказать ближайшую игру — Спросите "Когда ближайшая игра?"',
             '* Назначить капитана — Спросите "Кто капитанит?"',
+            '* Закончить пословицу — Напишите "Пословица" и начало пословицы',
+            '',
             '* Приносить удачу :)',
             '* Учусь собирать статистику игр...',
         ]
@@ -101,13 +153,14 @@ class Bot:
 
 
 class Controller:
+    commands_dict = Bot.get_commands_dict()
+
     @classmethod
     def parse_request(cls, request):
-        commands_dict = Bot.get_commands_dict()
-        for command, action in commands_dict.items():
+        for command, action in cls.commands_dict.items():
             if command in request.lower():
-                return action()
-        return Bot.cant_understand()
+                return action(request)
+        return Bot.cant_understand(request)
 
 
 def main():
